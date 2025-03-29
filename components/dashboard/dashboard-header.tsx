@@ -15,14 +15,19 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import {signOut, useSession} from "next-auth/react";
 
 export function DashboardHeader() {
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const router = useRouter()
 
-  const handleSignOut = () => {
-    // In a real app, this would sign out the user
+  const handleSignOut = async () => {
+    await signOut({
+      callbackUrl: "/",
+      redirect: false
+    })
     router.push("/")
+    router.refresh()
   }
 
   return (
