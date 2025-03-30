@@ -3,24 +3,24 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // or use PostgreSQL, MySQL, etc.
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?
-  access_token       String?
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?
-  session_state      String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -31,15 +31,81 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  password      String?   @db.VarChar(255)
   accounts      Account[]
   sessions      Session[]
-  password      String?   @db.VarChar(255)
 }
 
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id              String            @id @default(uuid()) @db.Uuid
+  transactionId   String            @unique @map("transaction_id")
+  riskScore       Float             @map("risk_score")
+  complianceScore Float             @map("compliance_score")
+  reason          String?
+  customerName    String            @map("customer_name")
+  creditCardNo    String            @map("credit_card_no")
+  merchant        String
+  category        String
+  street          String
+  city            String
+  zip             String
+  job             String?
+  dob             DateTime
+  isFraud         Boolean           @default(false) @map("is_fraud")
+  date            DateTime          @default(now())
+  status          TransactionStatus @default(pending)
+  isApproved      Boolean           @default(false) @map("is_approved")
+  amount          Decimal           @db.Decimal(10, 2)
+  alertId         String?           @unique @map("alert_id") @db.Uuid
+  type            TransactionType
+  description     String?
+  severity        SeverityLevel
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@index([alertId])
+  @@map("transactions")
+}
+
+model Analytics {
+  id                   String   @id @default(uuid()) @db.Uuid
+  fraudRate            Float    @map("fraud_rate")
+  transactionVolume    Int      @map("transaction_volume")
+  fraudTypes           Json     @map("fraud_types")
+  transactionAmountAvg Decimal  @map("transaction_amount_avg") @db.Decimal(10, 2)
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("analytics")
+}
+
+enum TransactionStatus {
+  pending
+  approved
+  rejected
+  flagged
+}
+
+enum TransactionType {
+  payment
+  transfer
+  withdrawal
+  deposit
+  refund
+}
+
+enum SeverityLevel {
+  none
+  low
+  medium
+  high
+  critical
 }
