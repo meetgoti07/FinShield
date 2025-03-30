@@ -58,7 +58,6 @@ export const columns: ColumnDef<User>[] = [
     cell: ({ row }) => (
       <div>
         <div className="font-medium">{row.getValue("name")}</div>
-        <div className="text-sm text-muted-foreground">{row.getValue("email")}</div>
       </div>
     ),
   },
