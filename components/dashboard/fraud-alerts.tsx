@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -7,43 +8,32 @@ import { Card, CardContent } from "@/components/ui/card"
 import { formatDistanceToNow } from "date-fns"
 import { AlertTriangle, CheckCircle, XCircle } from "lucide-react"
 
-const alerts = [
-  {
-    id: "A-1234",
-    transactionId: "T-1238",
-    amount: "$2,500.00",
-    customer: "Robert Davis",
-    email: "robert@example.com",
-    riskScore: 0.75,
-    reason: "Unusual location and amount",
-    date: new Date(2023, 2, 13),
-    status: "pending",
-  },
-  {
-    id: "A-1235",
-    transactionId: "T-1240",
-    amount: "$1,800.00",
-    customer: "Lisa Wong",
-    email: "lisa@example.com",
-    riskScore: 0.82,
-    reason: "Multiple transactions in short period",
-    date: new Date(2023, 2, 12),
-    status: "pending",
-  },
-  {
-    id: "A-1236",
-    transactionId: "T-1242",
-    amount: "$950.00",
-    customer: "James Miller",
-    email: "james@example.com",
-    riskScore: 0.68,
-    reason: "Unusual merchant category",
-    date: new Date(2023, 2, 11),
-    status: "resolved",
-  },
-]
+interface FraudAlert {
+  id: string
+  transactionId: string
+  amount: string
+  customer: string
+  date: Date
+  status: 'pending' | 'resolved'
+  riskScore: number
+  reason: string
+  severity: string
+}
 
 export function FraudAlerts() {
+
+  const [alerts, setAlerts] = useState<FraudAlert[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/recent-fraud')
+      .then(res => res.json())
+      .then(data => {
+        setAlerts(data)
+        setLoading(false)
+      })
+  }, [])
+  
   return (
     <div className="space-y-4">
       {alerts.map((alert) => (
@@ -59,7 +49,7 @@ export function FraudAlerts() {
               </div>
               <div className="flex-1 space-y-1">
                 <div className="flex items-center justify-between">
-                  <div className="font-medium">{alert.transactionId}</div>
+                  <div className="font-medium text-muted-foreground truncate max-w-[200px]">{alert.transactionId}</div>
                   <Badge variant={alert.status === "pending" ? "outline" : "secondary"}>{alert.status}</Badge>
                 </div>
                 <div className="flex items-center text-sm text-muted-foreground">

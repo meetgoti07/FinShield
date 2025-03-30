@@ -1,59 +1,84 @@
 "use client"
 
+import { useEffect, useState } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { formatDistanceToNow } from "date-fns"
 
-const transactions = [
-  {
-    id: "T-1234",
-    amount: "$1,250.00",
-    status: "completed",
-    email: "john@example.com",
-    name: "John Smith",
-    riskScore: 0.02,
-    date: new Date(2023, 2, 15),
-  },
-  {
-    id: "T-1235",
-    amount: "$150.00",
-    status: "completed",
-    email: "sarah@example.com",
-    name: "Sarah Johnson",
-    riskScore: 0.01,
-    date: new Date(2023, 2, 14),
-  },
-  {
-    id: "T-1236",
-    amount: "$350.00",
-    status: "processing",
-    email: "michael@example.com",
-    name: "Michael Chen",
-    riskScore: 0.05,
-    date: new Date(2023, 2, 14),
-  },
-  {
-    id: "T-1237",
-    amount: "$450.00",
-    status: "completed",
-    email: "emma@example.com",
-    name: "Emma Wilson",
-    riskScore: 0.03,
-    date: new Date(2023, 2, 13),
-  },
-  {
-    id: "T-1238",
-    amount: "$2,500.00",
-    status: "flagged",
-    email: "robert@example.com",
-    name: "Robert Davis",
-    riskScore: 0.75,
-    date: new Date(2023, 2, 13),
-  },
-]
+// const transactions = [
+//   {
+//     id: "T-1234",
+//     amount: "$1,250.00",
+//     status: "completed",
+//     email: "john@example.com",
+//     name: "John Smith",
+//     riskScore: 0.02,
+//     date: new Date(2023, 2, 15),
+//   },
+//   {
+//     id: "T-1235",
+//     amount: "$150.00",
+//     status: "completed",
+//     email: "sarah@example.com",
+//     name: "Sarah Johnson",
+//     riskScore: 0.01,
+//     date: new Date(2023, 2, 14),
+//   },
+//   {
+//     id: "T-1236",
+//     amount: "$350.00",
+//     status: "processing",
+//     email: "michael@example.com",
+//     name: "Michael Chen",
+//     riskScore: 0.05,
+//     date: new Date(2023, 2, 14),
+//   },
+//   {
+//     id: "T-1237",
+//     amount: "$450.00",
+//     status: "completed",
+//     email: "emma@example.com",
+//     name: "Emma Wilson",
+//     riskScore: 0.03,
+//     date: new Date(2023, 2, 13),
+//   },
+//   {
+//     id: "T-1238",
+//     amount: "$2,500.00",
+//     status: "flagged",
+//     email: "robert@example.com",
+//     name: "Robert Davis",
+//     riskScore: 0.75,
+//     date: new Date(2023, 2, 13),
+//   },
+// ]
+
+  interface Transaction {
+    id: string
+    transactionId: string
+    amount: string
+    status: 'completed' | 'processing' | 'flagged'
+    name: string
+    email: string
+    riskScore: number
+    date: Date
+  }
 
 export function RecentTransactions() {
+
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/recent-transaction')
+      .then(res => res.json())
+      .then(data => {
+        setTransactions(data)
+        setLoading(false)
+      })
+  }, [])
+  
   return (
     <Table>
       <TableHeader>
