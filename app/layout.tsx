@@ -5,7 +5,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import AuthProvider from "@/app/providers/SessionProvider";
-
+import Providers from './providers';
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
@@ -22,9 +22,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
+
         <AuthProvider>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+              <Providers>
             {children}
+              </Providers>
             <Toaster />
           </ThemeProvider>
         </AuthProvider>

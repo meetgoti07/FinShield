@@ -1,17 +1,66 @@
 "use client";
 
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { FileUp, AlertTriangle, Loader2 } from "lucide-react";
+import { FileUp, AlertTriangle, Loader2, Plus, Upload, Check } from "lucide-react";
 import * as XLSX from "xlsx";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { format, parse } from "date-fns";
 
+// Match your Prisma schema
 interface Transaction {
-  transactionID: string;
-  transactionAmount: number;
+  transactionId: string;
+  riskScore: number;
+  complianceScore: number;
+  reason?: string;
+  customerName: string;
+  creditCardNo: string;
+  merchant: string;
+  category: string;
+  street: string;
+  city: string;
+  zip: string;
+  job?: string;
+  dob: Date | string;
+  isFraud: boolean;
+  status: "pending" | "approved" | "rejected";
+  isApproved: boolean;
+  amount: number;
+  type: "purchase" | "refund" | "transfer" | "withdrawal";
+  description?: string;
+  severity: "low" | "medium" | "high" | "critical";
+}
+
+// CSV format from your dataset
+interface CSVTransaction {
+  trans_date_trans_time: string;
+  cc_num: string;
+  merchant: string;
+  category: string;
+  amt: string;
+  first: string;
+  last: string;
+  gender: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
+  lat: string;
+  long: string;
+  city_pop: string;
+  job: string;
+  dob: string;
+  trans_num: string;
+  unix_time: string;
+  merch_lat: string;
+  merch_long: string;
 }
 
 export default function Transactions() {
@@ -19,18 +68,64 @@ export default function Transactions() {
   const [suspiciousTransactions, setSuspiciousTransactions] = useState<Transaction[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processSuccess, setProcessSuccess] = useState(false);
+  const [singleTransaction, setSingleTransaction] = useState<Partial<Transaction>>({
+    status: "pending",
+    isApproved: false,
+    isFraud: false,
+    severity: "low",
+    type: "purchase",
+    riskScore: 0,
+    complianceScore: 0
+  });
 
+  // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
+      setProcessSuccess(false);
     }
   };
 
+  // Map CSV data to Transaction schema
+  const mapCsvToTransaction = (csvData: CSVTransaction[]): Transaction[] => {
+    return csvData.map(row => {
+      // Calculate simple risk score based on amount (just for demo purposes)
+      const amount = parseFloat(row.amt);
+      const riskScore = amount > 1000 ? 0.7 : amount > 500 ? 0.4 : 0.1;
+
+      return {
+        transactionId: row.trans_num,
+        riskScore: riskScore,
+        complianceScore: 1 - riskScore,
+        customerName: `${row.first} ${row.last}`,
+        creditCardNo: row.cc_num,
+        merchant: row.merchant,
+        category: row.category,
+        street: row.street,
+        city: row.city,
+        zip: row.zip,
+        job: row.job || undefined,
+        dob: new Date(row.dob), // Ensure proper date formatting
+        isFraud: false, // Default value
+        status: "pending",
+        isApproved: false,
+        amount: parseFloat(row.amt),
+        type: "purchase", // Default value
+        severity: amount > 1000 ? "high" : amount > 500 ? "medium" : "low",
+        description: `Transaction from ${row.merchant} on ${row.trans_date_trans_time}`
+      };
+    });
+  };
+
+  // Handle file upload and parsing
   const handleUpload = () => {
     if (!file) return;
 
     setIsUploading(true);
+    setProcessSuccess(false);
 
     const reader = new FileReader();
     reader.readAsBinaryString(file);
@@ -42,10 +137,12 @@ export default function Transactions() {
       const workbook = XLSX.read(fileContent, { type: "binary" });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-      const parsedData: Transaction[] = XLSX.utils.sheet_to_json(sheet);
+      const parsedData: CSVTransaction[] = XLSX.utils.sheet_to_json(sheet);
 
-      setTableData(parsedData);
-      detectSuspiciousTransactions(parsedData);
+      // Map the CSV data to match our Transaction schema
+      const mappedTransactions = mapCsvToTransaction(parsedData);
+      setTableData(mappedTransactions);
+      detectSuspiciousTransactions(mappedTransactions);
       setIsUploading(false);
     };
 
@@ -55,173 +152,513 @@ export default function Transactions() {
     };
   };
 
-  const detectSuspiciousTransactions = (data: Transaction[]) => {
-    const userTransactions: Record<string, number[]> = {};
+  // Process detected transactions via API
+  const processTransactions = async () => {
+    if (tableData.length === 0) return;
 
-    // Group transactions by transactionID
-    data.forEach((txn) => {
-      const id = txn.transactionID;
-      if (!userTransactions[id]) {
-        userTransactions[id] = [];
+    setIsProcessing(true);
+
+    try {
+      const response = await fetch('/api/transactions/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(tableData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process transactions');
       }
-      userTransactions[id].push(txn.transactionAmount);
+
+      setProcessSuccess(true);
+    } catch (error) {
+      console.error('Error processing transactions:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Process a single transaction via API
+  const processSingleTransaction = async () => {
+    setIsProcessing(true);
+
+    try {
+      const response = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(singleTransaction),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create transaction');
+      }
+
+      const result = await response.json();
+
+      // Reset form after successful submission
+      setSingleTransaction({
+        status: "pending",
+        isApproved: false,
+        isFraud: false,
+        severity: "low",
+        type: "purchase",
+        riskScore: 0,
+        complianceScore: 0
+      });
+
+      setProcessSuccess(true);
+    } catch (error) {
+      console.error('Error creating transaction:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Logic to detect suspicious transactions
+  const detectSuspiciousTransactions = (data: Transaction[]) => {
+    const suspiciousItems: Transaction[] = [];
+
+    data.forEach((txn) => {
+      // Add your suspicious transaction detection logic here
+      if (txn.amount > 1000 || txn.riskScore > 0.6) {
+        suspiciousItems.push(txn);
+      }
     });
 
-    const suspicious: Transaction[] = [];
+    setSuspiciousTransactions(suspiciousItems);
+  };
 
-    // Detect suspicious transactions
-    for (const id in userTransactions) {
-      const amounts = userTransactions[id];
-      const avgAmount = amounts.reduce((sum, amt) => sum + amt, 0) / amounts.length;
+  // Handle input change for single transaction form
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    console.log(name,value)
+    setSingleTransaction(prev => ({ ...prev, [name]: value }));
+  };
 
-      amounts.forEach((amt) => {
-        if (amt >= avgAmount * 5) {
-          suspicious.push({ transactionID: id, transactionAmount: amt });
-        }
-      });
-    }
-
-    setSuspiciousTransactions(suspicious);
+  // Handle select change for single transaction form
+  const handleSelectChange = (name: string, value: string) => {
+    setSingleTransaction(prev => ({ ...prev, [name]: value }));
   };
 
   return (
-    <div className="w-full flex flex-col items-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8">
-      <Card className="w-full max-w-6xl p-6 space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-800">Transaction Analyzer</h1>
-          <p className="text-gray-600">Upload your transaction data to detect suspicious activity</p>
-        </div>
+      <div className="w-full flex flex-col items-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8">
+        <Card className="w-full max-w-6xl p-4 space-y-4">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-gray-800">Transaction Manager</CardTitle>
+            <CardDescription className="text-gray-600">Add transactions individually or upload in bulk</CardDescription>
+          </CardHeader>
 
-        {/* File Upload Section */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Input
-                type="file"
-                accept=".xlsx, .xls, .csv"
-                onChange={handleFileChange}
-                className="cursor-pointer"
-                id="file-upload"
-              />
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <FileUp className="h-5 w-5 text-gray-400" />
-              </div>
-            </div>
-            <Button 
-              onClick={handleUpload} 
-              disabled={isUploading || !file}
-              className="gap-2"
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <FileUp className="h-4 w-4" />
-                  Analyze
-                </>
-              )}
-            </Button>
-          </div>
-          {!file && (
-            <p className="text-sm text-gray-500">
-              Supported formats: .xlsx, .xls, .csv
-            </p>
-          )}
-          {file && (
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <FileUp className="h-4 w-4 text-blue-500" />
-              <span>{file.name}</span>
-              <span className="text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
-            </div>
-          )}
-        </div>
+          <CardContent>
+            <Tabs defaultValue="upload" className="w-full">
+              <TabsList className="grid grid-cols-2 mb-6">
+                <TabsTrigger value="upload">CSV Upload</TabsTrigger>
+                <TabsTrigger value="single">Single Transaction</TabsTrigger>
+              </TabsList>
 
-        {/* Suspicious Transactions Alert */}
-        {suspiciousTransactions.length > 0 && (
-          <Alert variant="destructive" className="border-red-200 bg-red-50">
-            <AlertTriangle className="h-5 w-5 text-red-600" />
-            <AlertTitle className="text-red-800">Suspicious Activity Detected</AlertTitle>
-            <AlertDescription className="text-red-700">
-              <div className="space-y-2">
-                {suspiciousTransactions.map((txn, index) => (
-                  <div key={index} className="flex gap-2">
-                    <span className="font-medium">ID:</span>
-                    <span className="font-mono">{txn.transactionID}</span>
-                    <span className="font-medium">Amount:</span>
-                    <span className="font-mono">₹{txn.transactionAmount.toLocaleString()}</span>
+              {/* Bulk Upload Tab */}
+              <TabsContent value="upload" className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="relative flex-1">
+                      <Input
+                          type="file"
+                          accept=".xlsx, .xls, .csv"
+                          onChange={handleFileChange}
+                          className="cursor-pointer"
+                          id="file-upload"
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <FileUp className="h-5 w-5 text-gray-400" />
+                      </div>
+                    </div>
+                    <Button
+                        onClick={handleUpload}
+                        disabled={isUploading || !file}
+                        className="gap-2"
+                    >
+                      {isUploading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Processing...
+                          </>
+                      ) : (
+                          <>
+                            <FileUp className="h-4 w-4" />
+                            Parse Data
+                          </>
+                      )}
+                    </Button>
                   </div>
-                ))}
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
 
-        {/* Uploaded Content Section */}
-        {tableData.length > 0 ? (
-          <div className="space-y-4 w-[1000px] overflow-y-scroll">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-800">
-                Transaction Data
-                <span className="ml-2 text-sm font-normal text-gray-500">
-                  ({tableData.length} records)
-                </span>
-              </h2>
-              {suspiciousTransactions.length > 0 && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
-                  {suspiciousTransactions.length} suspicious transactions
-                </span>
-              )}
-            </div>
+                  {!file && (
+                      <div className="text-sm text-gray-500 space-y-1">
+                        <p>Supported formats: .xlsx, .xls, .csv</p>
+                        <p>Expected columns: trans_date_trans_time, cc_num, merchant, category, amt, first, last, gender, street, city, state, zip, lat, long, city_pop, job, dob, trans_num, unix_time, merch_lat, merch_long</p>
+                      </div>
+                  )}
 
-            <div className="h-[400px] rounded-md border">
-              <Table>
-                <TableHeader className="bg-gray-100">
-                  <TableRow>
-                    {Object.keys(tableData[0]).map((key) => (
-                      <TableHead key={key} className="font-medium text-gray-700">
-                        {key.split(/(?=[A-Z])/).join(" ")}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tableData.map((row, index) => {
-                    const isSuspicious = suspiciousTransactions.some(
-                      (txn) => txn.transactionID === row.transactionID
-                    );
-                    return (
-                      <TableRow
-                        key={index}
-                        className={isSuspicious ? "bg-red-50 hover:bg-red-100" : ""}
+                  {file && (
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <FileUp className="h-4 w-4 text-blue-500" />
+                        <span>{file.name}</span>
+                        <span className="text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
+                      </div>
+                  )}
+                </div>
+
+                {/* Process Transactions Button */}
+                {tableData.length > 0 && (
+                    <div className="flex justify-end space-x-4 mt-4">
+                      <Button
+                          variant="default"
+                          onClick={processTransactions}
+                          disabled={isProcessing}
+                          className="gap-2"
                       >
-                        {Object.values(row).map((value, i) => (
-                          <TableCell
-                            key={i}
-                            className={isSuspicious ? "font-medium text-red-800" : ""}
-                          >
-                            {typeof value === "number" ? value.toLocaleString() : value}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-12 space-y-4 text-center border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
-            <FileUp className="h-12 w-12 text-gray-400" />
-            <h3 className="text-lg font-medium text-gray-700">No transaction data</h3>
-            <p className="text-gray-500 max-w-md">
-              Upload a spreadsheet file to analyze transaction patterns and detect suspicious activity
-            </p>
-          </div>
-        )}
-      </Card>
-    </div>
+                        {isProcessing ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Processing...
+                            </>
+                        ) : (
+                            <>
+                              <Upload className="h-4 w-4" />
+                              Process Transactions
+                            </>
+                        )}
+                      </Button>
+                    </div>
+                )}
+
+                {processSuccess && (
+                    <Alert className="bg-green-50 border-green-200">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <AlertTitle>Success</AlertTitle>
+                      <AlertDescription>
+                        Transactions have been processed and saved to database successfully.
+                      </AlertDescription>
+                    </Alert>
+                )}
+
+                {/* Suspicious Transactions Alert */}
+                {suspiciousTransactions.length > 0 && (
+                    <Alert variant="destructive" className="border-red-200 bg-red-50">
+                      <AlertTriangle className="h-5 w-5 text-red-600" />
+                      <AlertTitle className="text-red-800">Suspicious Activity Detected</AlertTitle>
+                      <AlertDescription className="text-red-700">
+                        <div className="space-y-2">
+                          {suspiciousTransactions.slice(0, 3).map((txn, index) => (
+                              <div key={index} className="flex gap-2 flex-wrap">
+                                <span className="font-medium">ID:</span>
+                                <span className="font-mono">{txn.transactionId}</span>
+                                <span className="font-medium">Amount:</span>
+                                <span className="font-mono">₹{txn.amount.toLocaleString()}</span>
+                              </div>
+                          ))}
+                          {suspiciousTransactions.length > 3 && (
+                              <div className="text-sm">
+                                + {suspiciousTransactions.length - 3} more suspicious transactions
+                              </div>
+                          )}
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                )}
+
+                {/* Uploaded Content Section */}
+                {tableData.length > 0 ? (
+                    <div className="space-y-4 w-full overflow-x-auto">
+                      <div className="flex justify-between items-center">
+                        <h2 className="text-lg font-semibold text-gray-800">
+                          Transaction Data
+                          <span className="ml-2 text-sm font-normal text-gray-500">
+                        ({tableData.length} records)
+                      </span>
+                        </h2>
+                        {suspiciousTransactions.length > 0 && (
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                        {suspiciousTransactions.length} suspicious transactions
+                      </span>
+                        )}
+                      </div>
+
+                      <div className="max-h-[400px] rounded-md border overflow-auto">
+                        <Table>
+                          <TableHeader className="bg-gray-100 sticky top-0">
+                            <TableRow>
+                              <TableHead className="font-medium text-gray-700">Transaction ID</TableHead>
+                              <TableHead className="font-medium text-gray-700">Customer Name</TableHead>
+                              <TableHead className="font-medium text-gray-700">Amount</TableHead>
+                              <TableHead className="font-medium text-gray-700">Merchant</TableHead>
+                              <TableHead className="font-medium text-gray-700">Category</TableHead>
+                              <TableHead className="font-medium text-gray-700">Risk Score</TableHead>
+                              <TableHead className="font-medium text-gray-700">Severity</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {tableData.map((row, index) => {
+                              const isSuspicious = suspiciousTransactions.some(
+                                  (txn) => txn.transactionId === row.transactionId
+                              );
+                              return (
+                                  <TableRow
+                                      key={index}
+                                      className={isSuspicious ? "bg-red-50 hover:bg-red-100" : ""}
+                                  >
+                                    <TableCell className={isSuspicious ? "font-medium text-red-800" : ""}>
+                                      {row.transactionId}
+                                    </TableCell>
+                                    <TableCell className={isSuspicious ? "font-medium text-red-800" : ""}>
+                                      {row.customerName}
+                                    </TableCell>
+                                    <TableCell className={isSuspicious ? "font-medium text-red-800" : ""}>
+                                      ₹{row.amount.toLocaleString()}
+                                    </TableCell>
+                                    <TableCell className={isSuspicious ? "font-medium text-red-800" : ""}>
+                                      {row.merchant}
+                                    </TableCell>
+                                    <TableCell className={isSuspicious ? "font-medium text-red-800" : ""}>
+                                      {row.category}
+                                    </TableCell>
+                                    <TableCell className={isSuspicious ? "font-medium text-red-800" : ""}>
+                                      {row.riskScore.toFixed(2)}
+                                    </TableCell>
+                                    <TableCell className={isSuspicious ? "font-medium text-red-800" : ""}>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    row.severity === "high" ? "bg-red-100 text-red-800" :
+                                        row.severity === "medium" ? "bg-yellow-100 text-yellow-800" :
+                                            "bg-green-100 text-green-800"
+                                }`}>
+                                  {row.severity}
+                                </span>
+                                    </TableCell>
+                                  </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-12 space-y-4 text-center border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+                      <FileUp className="h-12 w-12 text-gray-400" />
+                      <h3 className="text-lg font-medium text-gray-700">No transaction data</h3>
+                      <p className="text-gray-500 max-w-md">
+                        Upload a CSV file to analyze transaction patterns and detect suspicious activity
+                      </p>
+                    </div>
+                )}
+              </TabsContent>
+
+              {/* Single Transaction Tab */}
+              <TabsContent value="single" className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="transactionId">Transaction ID</Label>
+                      <Input
+                          id="transactionId"
+                          name="transactionId"
+                          value={singleTransaction.transactionId || ''}
+                          onChange={handleInputChange}
+                          placeholder="e.g., TXN-123456"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="amount">Amount</Label>
+                      <Input
+                          id="amount"
+                          name="amount"
+                          type="number"
+                          value={singleTransaction.amount || ''}
+                          onChange={handleInputChange}
+                          placeholder="0.00"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="customerName">Customer Name</Label>
+                      <Input
+                          id="customerName"
+                          name="customerName"
+                          value={singleTransaction.customerName || ''}
+                          onChange={handleInputChange}
+                          placeholder="Full name"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="creditCardNo">Credit Card Number</Label>
+                      <Input
+                          id="creditCardNo"
+                          name="creditCardNo"
+                          value={singleTransaction.creditCardNo || ''}
+                          onChange={handleInputChange}
+                          placeholder="XXXX-XXXX-XXXX-XXXX"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="merchant">Merchant</Label>
+                      <Input
+                          id="merchant"
+                          name="merchant"
+                          value={singleTransaction.merchant || ''}
+                          onChange={handleInputChange}
+                          placeholder="Merchant name"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="category">Category</Label>
+                      <Input
+                          id="category"
+                          name="category"
+                          value={singleTransaction.category || ''}
+                          onChange={handleInputChange}
+                          placeholder="e.g., Retail, Food, Travel"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="street">Street</Label>
+                        <Input
+                            id="street"
+                            name="street"
+                            value={singleTransaction.street || ''}
+                            onChange={handleInputChange}
+                            placeholder="Street address"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="city">City</Label>
+                        <Input
+                            id="city"
+                            name="city"
+                            value={singleTransaction.city || ''}
+                            onChange={handleInputChange}
+                            placeholder="City"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="zip">ZIP Code</Label>
+                        <Input
+                            id="zip"
+                            name="zip"
+                            value={singleTransaction.zip || ''}
+                            onChange={handleInputChange}
+                            placeholder="ZIP code"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="job">Job</Label>
+                        <Input
+                            id="job"
+                            name="job"
+                            value={singleTransaction.job || ''}
+                            onChange={handleInputChange}
+                            placeholder="Customer occupation"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="type">Transaction Type</Label>
+                        <Select
+                            value={singleTransaction.type as string}
+                            onValueChange={(value) => handleSelectChange('type', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="purchase">Purchase</SelectItem>
+                            <SelectItem value="refund">Refund</SelectItem>
+                            <SelectItem value="transfer">Transfer</SelectItem>
+                            <SelectItem value="withdrawal">Withdrawal</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="severity">Risk Severity</Label>
+                        <Select
+                            value={singleTransaction.severity as string}
+                            onValueChange={(value) => handleSelectChange('severity', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select severity" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="critical">Critical</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                      id="description"
+                      name="description"
+                      value={singleTransaction.description || ''}
+                      onChange={handleInputChange}
+                      placeholder="Additional transaction details"
+                      rows={3}
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                      variant="default"
+                      onClick={processSingleTransaction}
+                      disabled={isProcessing || !singleTransaction.transactionId || !singleTransaction.amount || !singleTransaction.customerName}
+                      className="gap-2"
+                  >
+                    {isProcessing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                    ) : (
+                        <>
+                          <Plus className="h-4 w-4" />
+                          Submit Transaction
+                        </>
+                    )}
+                  </Button>
+                </div>
+
+                {processSuccess && (
+                    <Alert className="bg-green-50 border-green-200">
+                      <Check className="h-4 w-4 text-green-600" />
+                      <AlertTitle>Success</AlertTitle>
+                      <AlertDescription>
+                        Transaction has been submitted and saved to the database successfully.
+                      </AlertDescription>
+                    </Alert>
+                )}
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
   );
 }
