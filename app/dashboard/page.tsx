@@ -1,17 +1,48 @@
 "use client"
 import type React from "react"
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Overview } from "@/components/dashboard/overview"
 import { RecentTransactions } from "@/components/dashboard/recent-transactions"
 import { FraudAlerts } from "@/components/dashboard/fraud-alerts"
 import { Button } from "@/components/ui/button"
-import { ArrowUpRight, Download } from "lucide-react"
+import { ArrowUpRight, Download, LoaderCircle } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
+interface DashboardPage {
+  totalTransactions: number
+  fraudAlerts: number
+  avgRisk: number
+  complianceScore: number
+  transactionPercentage: number
+  chartData: Array<{ date: string; count: number }>
+}
+
+
 export default function DashboardPage() {
   const router = useRouter()
+
+  const [data, setData] = useState<DashboardPage | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/overview')
+      .then(res => res.json())
+      .then(data => {
+        setData(data)
+        setLoading(false)
+      })
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <LoaderCircle className="animate-spin h-28 w-28 text-purple-600" />
+      </div>
+    )
+  }
 
   const handleTabChange = (value: string) => {
     if (value === "analytics") {
@@ -49,8 +80,15 @@ export default function DashboardPage() {
                 <CreditCardIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">1,248</div>
-                <p className="text-xs text-muted-foreground">+12.5% from last month</p>
+                <div className="text-2xl font-bold">{data?.totalTransactions}</div>
+                {/* <div className="text-2xl font-bold">1,248</div> */}
+                <p className="text-xs text-muted-foreground">
+  {data?.transactionPercentage !== undefined && data?.transactionPercentage < 0 ? "-" : "+"}
+  {((data?.transactionPercentage ?? 12.5) * 1).toFixed(3)}% from last month
+</p>
+
+                {/* <p className="text-xs text-muted-foreground">{data?.transactionPercentage >= 0 ? "+" : "-"}{data?.transactionPercentage || "12.5"}% from last month</p> */}
+                {/* <p className="text-xs text-muted-foreground">+12.5% from last month</p> */}
               </CardContent>
             </Card>
             <Card>
@@ -59,7 +97,7 @@ export default function DashboardPage() {
                 <AlertIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">23</div>
+                <div className="text-2xl font-bold">{data?.fraudAlerts}</div>
                 <p className="text-xs text-muted-foreground">-4% from last month</p>
               </CardContent>
             </Card>
@@ -69,7 +107,7 @@ export default function DashboardPage() {
                 <ShieldIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">0.12</div>
+                <div className="text-2xl font-bold">{data?.avgRisk || '0.18'}</div>
                 <p className="text-xs text-muted-foreground">Lower is better</p>
               </CardContent>
             </Card>
@@ -79,7 +117,7 @@ export default function DashboardPage() {
                 <CheckIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">98%</div>
+                <div className="text-2xl font-bold">{data?.complianceScore || '98%'}</div>
                 <p className="text-xs text-muted-foreground">+2% from last month</p>
               </CardContent>
             </Card>
@@ -94,7 +132,7 @@ export default function DashboardPage() {
                 <Overview />
               </CardContent>
             </Card>
-            <Card className="col-span-3">
+            <Card className="col-span-3 overflow-y-scroll h-[550px]">
               <CardHeader>
                 <CardTitle>Recent Fraud Alerts</CardTitle>
                 <CardDescription>Recent transactions flagged as potentially fraudulent</CardDescription>
