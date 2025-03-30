@@ -83,10 +83,9 @@ export default function DashboardPage() {
                 <div className="text-2xl font-bold">{data?.totalTransactions}</div>
                 {/* <div className="text-2xl font-bold">1,248</div> */}
                 <p className="text-xs text-muted-foreground">
-  {data?.transactionPercentage !== undefined && data?.transactionPercentage < 0 ? "-" : "+"}
-  {((data?.transactionPercentage ?? 12.5) * 1).toFixed(3)}% from last month
-</p>
-
+                  {data?.transactionPercentage !== undefined && data?.transactionPercentage < 0 ? "-" : "+"}
+                  {((data?.transactionPercentage ?? 12.5) * 1).toFixed(2)}% from last month
+                </p>
                 {/* <p className="text-xs text-muted-foreground">{data?.transactionPercentage >= 0 ? "+" : "-"}{data?.transactionPercentage || "12.5"}% from last month</p> */}
                 {/* <p className="text-xs text-muted-foreground">+12.5% from last month</p> */}
               </CardContent>
@@ -107,7 +106,7 @@ export default function DashboardPage() {
                 <ShieldIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{data?.avgRisk || '0.18'}</div>
+                <div className="text-2xl font-bold">{data?.avgRisk.toFixed(3) || '0.18'}</div>
                 <p className="text-xs text-muted-foreground">Lower is better</p>
               </CardContent>
             </Card>
@@ -117,7 +116,7 @@ export default function DashboardPage() {
                 <CheckIcon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{data?.complianceScore || '98%'}</div>
+                <div className="text-2xl font-bold">{data?.complianceScore.toFixed(3) || '98%'}</div>
                 <p className="text-xs text-muted-foreground">+2% from last month</p>
               </CardContent>
             </Card>
