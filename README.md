@@ -10,6 +10,7 @@ Smart Financial Transaction Security with Fraud Detection
 Run Finshield With pnpm
 
 ```bash
+  npm install -g pnpm
   pnpm install
   pnpm dev
 ```
