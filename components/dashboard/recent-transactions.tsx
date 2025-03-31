@@ -68,14 +68,12 @@ import { formatDistanceToNow } from "date-fns"
 export function RecentTransactions() {
 
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/recent-transaction')
       .then(res => res.json())
       .then(data => {
         setTransactions(data)
-        setLoading(false)
       })
   }, [])
   

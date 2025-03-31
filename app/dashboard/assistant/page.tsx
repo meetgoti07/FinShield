@@ -10,13 +10,7 @@ export default function AssistantPage() {
           Get instant answers about transactions, policies, and compliance with our AI assistant.
         </p>
       </div>
-      <Card className="flex-1">
-        <CardHeader>
-          <CardTitle>FraudShield AI Assistant</CardTitle>
-          <CardDescription>
-            Ask questions about transactions, policies, compliance, or get help with the platform.
-          </CardDescription>
-        </CardHeader>
+      <Card className="flex-1 min-h-[100%]">
         <CardContent>
           <AIChat />
         </CardContent>

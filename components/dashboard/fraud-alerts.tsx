@@ -58,11 +58,7 @@ export function FraudAlerts() {
                   <span>{formatDistanceToNow(alert.date, { addSuffix: true })}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={`/placeholder.svg?height=24&width=24`} alt={alert.customer} />
-                    <AvatarFallback>{alert.customer.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <span>{alert.customer}</span>
+                  <span>Name: {alert.customer}</span>
                 </div>
                 <div className="text-sm text-muted-foreground">
                   <span className="font-medium">Reason:</span> {alert.reason}

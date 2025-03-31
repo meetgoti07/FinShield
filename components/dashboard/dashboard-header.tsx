@@ -43,16 +43,6 @@ export function DashboardHeader() {
             <span className="font-bold text-xl hidden md:inline-block">FraudShield AI</span>
           </Link>
         </div>
-        <div className="hidden md:flex items-center gap-4 md:gap-6 lg:gap-8">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search transactions..."
-              className="w-full bg-background pl-8 md:w-[300px] lg:w-[400px]"
-            />
-          </div>
-        </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />

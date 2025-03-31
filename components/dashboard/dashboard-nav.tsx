@@ -66,6 +66,7 @@ export function DashboardNav() {
               <Link
                 key={item.href}
                 href={item.href}
+                style={{cursor: "pointer"}}
                 className={cn(
                   "flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-muted hover:text-primary",
                   pathname === item.href ? "bg-muted text-primary" : "text-muted-foreground",

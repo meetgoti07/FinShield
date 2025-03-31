@@ -16,7 +16,8 @@ export async function GET() {
         riskScore: true,
         createdAt: true,
         // email: true
-      }
+      },
+
     })
 
     return NextResponse.json(recentTransactions.map(transaction => ({

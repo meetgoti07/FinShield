@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma'
 export async function GET() {
   try {
     const fraudAlerts = await prisma.transaction.findMany({
-      where: { 
+      where: {
         isFraud: true,
         status: { in: ['pending', 'flagged'] } // Adjust based on your needs
       },
@@ -22,7 +22,7 @@ export async function GET() {
         reason: true,
         isApproved: true,
         severity: true
-      }
+      },
     })
 
     return NextResponse.json(fraudAlerts.map(alert => ({

@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { format, parse } from "date-fns";
+import {now} from "next-auth/client/_utils";
 
 // Match your Prisma schema
 interface Transaction {
@@ -29,6 +30,7 @@ interface Transaction {
   zip: string;
   job?: string;
   dob: Date | string;
+  trans_date_trans_time: Date | string;
   isFraud: boolean;
   status: "pending" | "approved" | "rejected";
   isApproved: boolean;
@@ -40,7 +42,7 @@ interface Transaction {
 
 // CSV format from your dataset
 interface CSVTransaction {
-  trans_date_trans_time: string;
+  trans_date_trans_time: Date | string;
   cc_num: string;
   merchant: string;
   category: string;
@@ -89,10 +91,32 @@ export default function Transactions() {
     }
   };
 
-  // Map CSV data to Transaction schema
+// Function to convert Excel date serial number to JavaScript Date
+  function excelDateToJSDate(excelDate) {
+    // Excel dates start from December 30, 1899
+    const utc_days = Math.floor(excelDate - 25569);
+    const utc_value = utc_days * 86400;
+    const date_info = new Date(utc_value * 1000);
+
+    // Handle time portion
+    const fractional_day = excelDate - Math.floor(excelDate) + 0.0000001;
+    let total_seconds = Math.floor(86400 * fractional_day);
+    const seconds = total_seconds % 60;
+    total_seconds -= seconds;
+    const hours = Math.floor(total_seconds / (60 * 60));
+    const minutes = Math.floor(total_seconds / 60) % 60;
+
+    return new Date(date_info.getFullYear(), date_info.getMonth(), date_info.getDate(), hours, minutes, seconds);
+  }
+
+// In your mapCsvToTransaction function:
   const mapCsvToTransaction = (csvData: CSVTransaction[]): Transaction[] => {
     return csvData.map(row => {
-      // Calculate simple risk score based on amount (just for demo purposes)
+      // Parse dates from Excel serial numbers
+      const transactionDate = excelDateToJSDate(parseFloat(row.trans_date_trans_time));
+      const dobDate = excelDateToJSDate(parseFloat(row.dob));
+
+      // Calculate simple risk score based on amount
       const amount = parseFloat(row.amt);
       const riskScore = amount > 1000 ? 0.7 : amount > 500 ? 0.4 : 0.1;
 
@@ -107,18 +131,23 @@ export default function Transactions() {
         street: row.street,
         city: row.city,
         zip: row.zip,
+        merch_lat: row.merch_lat,
+        merch_long: row.merch_long,
         job: row.job || undefined,
-        dob: new Date(row.dob), // Ensure proper date formatting
+        // Format dates properly
+        trans_date_trans_time: format(transactionDate, "yyyy-MM-dd'T'HH:mm:ss"),
+        dob: format(dobDate, "yyyy-MM-dd"),
         isFraud: false, // Default value
         status: "pending",
         isApproved: false,
         amount: parseFloat(row.amt),
         type: "purchase", // Default value
         severity: amount > 1000 ? "high" : amount > 500 ? "medium" : "low",
-        description: `Transaction from ${row.merchant} on ${row.trans_date_trans_time}`
+        description: `Transaction from ${row.merchant} on ${format(transactionDate, "yyyy-MM-dd")}`
       };
     });
   };
+
 
   // Handle file upload and parsing
   const handleUpload = () => {
@@ -138,9 +167,10 @@ export default function Transactions() {
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
       const parsedData: CSVTransaction[] = XLSX.utils.sheet_to_json(sheet);
-
+      console.log(parsedData)
       // Map the CSV data to match our Transaction schema
       const mappedTransactions = mapCsvToTransaction(parsedData);
+      console.log("mapped",mappedTransactions);
       setTableData(mappedTransactions);
       detectSuspiciousTransactions(mappedTransactions);
       setIsUploading(false);
