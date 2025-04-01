@@ -3,7 +3,7 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import prisma from "@/lib/prisma";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 export const authOptions = {
     adapter: PrismaAdapter(prisma),
@@ -15,7 +15,8 @@ export const authOptions = {
                 params: {
                     prompt: "consent",
                     access_type: "offline",
-                    response_type: "code",
+                    response_type: "c" +
+                        "ode",
                     hl: "en"
                 }
             }
