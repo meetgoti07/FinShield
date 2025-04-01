@@ -6,7 +6,6 @@ import Loader from '@/components/Loader';
 
 export function NavigationEvents() {
     const pathname = usePathname();
-    const searchParams = useSearchParams();
     const [loading, setLoading] = useState(false);
     const [fadeOut, setFadeOut] = useState(false);
 
@@ -21,7 +20,7 @@ export function NavigationEvents() {
         }, 500);
 
         return () => clearTimeout(timeoutId);
-    }, [pathname, searchParams]);
+    }, [pathname]);
 
     if (!loading) return null;
 

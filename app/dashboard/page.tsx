@@ -117,12 +117,6 @@ export default function DashboardPage() {
               <CardTitle>Recent Transactions</CardTitle>
               <CardDescription>Recent transactions processed by your organization</CardDescription>
             </div>
-            <Link href="/dashboard/transactions">
-              <Button variant="outline" size="sm" className="gap-1">
-                View All
-                <ArrowUpRight className="h-4 w-4" />
-              </Button>
-            </Link>
           </CardHeader>
           <CardContent>
             <RecentTransactions />

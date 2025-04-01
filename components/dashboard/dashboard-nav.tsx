@@ -26,16 +26,16 @@ const navItems = [
     href: "/dashboard/analytics",
     icon: BarChart3,
   },
-  {
-    title: "Compliance",
-    href: "/dashboard/compliance",
-    icon: Shield,
-  },
-  {
-    title: "Policies",
-    href: "/dashboard/policies",
-    icon: FileText,
-  },
+  // {
+  //   title: "Compliance",
+  //   href: "/dashboard/compliance",
+  //   icon: Shield,
+  // },
+  // {
+  //   title: "Policies",
+  //   href: "/dashboard/policies",
+  //   icon: FileText,
+  // },
   {
     title: "Users",
     href: "/dashboard/users",
@@ -45,12 +45,7 @@ const navItems = [
     title: "AI Assistant",
     href: "/dashboard/assistant",
     icon: MessageSquare,
-  },
-  {
-    title: "Settings",
-    href: "/dashboard/settings",
-    icon: Settings,
-  },
+  }
 ]
 
 export function DashboardNav() {

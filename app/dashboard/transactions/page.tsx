@@ -214,12 +214,12 @@ export default function Transactions() {
     setIsProcessing(true);
 
     try {
-      const response = await fetch('/api/transactions', {
+      const response = await fetch('/api/transactions/batch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(singleTransaction),
+        body: JSON.stringify([singleTransaction]), // Wrap in an array
       });
 
       if (!response.ok) {
@@ -246,6 +246,7 @@ export default function Transactions() {
       setIsProcessing(false);
     }
   };
+
 
   // Logic to detect suspicious transactions
   const detectSuspiciousTransactions = (data: Transaction[]) => {
@@ -510,6 +511,30 @@ export default function Transactions() {
                     </div>
 
                     <div className="space-y-2">
+                      <Label htmlFor="trans_date_trans_time">Transaction Date & Time</Label>
+                      <Input
+                          id="trans_date_trans_time"
+                          name="trans_date_trans_time"
+                          type="datetime-local"
+                          value={singleTransaction.trans_date_trans_time || ''}
+                          onChange={handleInputChange}
+                          placeholder="Select date and time"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="dob">Date of Birth</Label>
+                      <Input
+                          id="dob"
+                          name="dob"
+                          type="date"
+                          value={singleTransaction.dob || ''}
+                          onChange={handleInputChange}
+                          placeholder="Select date of birth"
+                      />
+                    </div>
+                  </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="customerName">Customer Name</Label>
                       <Input
                           id="customerName"
@@ -541,6 +566,7 @@ export default function Transactions() {
                           placeholder="Merchant name"
                       />
                     </div>
+
                   </div>
 
                   <div className="space-y-4">
@@ -554,6 +580,35 @@ export default function Transactions() {
                           placeholder="e.g., Retail, Food, Travel"
                       />
                     </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="merch_lat">Merchant Latitude</Label>
+                        <Input
+                            id="merch_lat"
+                            name="merch_lat"
+                            type="number"
+                            step="any"
+                            value={singleTransaction.merch_lat || ''}
+                            onChange={handleInputChange}
+                            placeholder="Latitude (e.g., 37.7749)"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="merch_long">Merchant Longitude</Label>
+                        <Input
+                            id="merch_long"
+                            name="merch_long"
+                            type="number"
+                            step="any"
+                            value={singleTransaction.merch_long || ''}
+                            onChange={handleInputChange}
+                            placeholder="Longitude (e.g., -122.4194)"
+                        />
+                      </div>
+                    </div>
+
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -641,7 +696,7 @@ export default function Transactions() {
                       </div>
                     </div>
                   </div>
-                </div>
+
 
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
