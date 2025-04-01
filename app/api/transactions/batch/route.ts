@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
         // Send batch data to ML server for prediction
         const predictionResponse = await fetch(
-            "https://ee71-34-75-255-77.ngrok-free.app/predict",
+            "https://xgboostmlmodel.onrender.com/predict",
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

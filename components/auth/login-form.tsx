@@ -46,7 +46,7 @@ export function LoginForm() {
   const handleGoogleLogin = async () => {
     try {
       await signIn("google", {
-        callbackUrl: `${window.location.origin}/dashboard`,
+        callbackUrl: "/dashboard",
         redirect: true
       })
     } catch (error) {

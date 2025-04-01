@@ -17,7 +17,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import { signIn } from "next-auth/react";
-import { Google } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 const formSchema = z

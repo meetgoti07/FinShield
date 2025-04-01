@@ -15,10 +15,9 @@ export const authOptions = {
                 params: {
                     prompt: "consent",
                     access_type: "offline",
-                    response_type: "c" +
-                        "ode",
+                    response_type: "code",
                     hl: "en"
-                }
+                },
             }
         }),
         CredentialsProvider({
@@ -73,7 +72,11 @@ export const authOptions = {
             return token;
         },
         async redirect({ url, baseUrl }) {
-            return url.startsWith(baseUrl) ? url : baseUrl;
+            // Redirect to dashboard after successful login
+            if (url === baseUrl || url === `${baseUrl}/login`) {
+                return `${baseUrl}/dashboard`;
+            }
+            return url;
         }
     },
     pages: {
