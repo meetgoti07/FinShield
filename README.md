@@ -16,9 +16,7 @@ Run Finshield With pnpm
 ```
 
 ## Contributing
-
-
-
 First Fork the Repo, then Clone that Repo.
 Commit the changes to that Repo then make the PR Request.
 
+## Contributors
