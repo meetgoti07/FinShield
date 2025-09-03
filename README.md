@@ -334,7 +334,3 @@ pnpm prisma generate
 - **Google AI** - For powerful generative AI capabilities
 
 ---
-
-**Built with love by [Meet Goti](https://github.com/meetgoti07)**
-
-_FinShield AI - Protecting Financial Transactions with Artificial Intelligence_
