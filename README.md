@@ -1,6 +1,6 @@
 # FinShield AI
 
-**Next-Generation AI-Powered Fraud Detection Platform**
+**Fraud Detection Platform**
 
 [![Watch Demo](https://img.shields.io/badge/Watch_Demo-YouTube-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=mnxmlJTKeEk)
 
