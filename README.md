@@ -39,14 +39,6 @@ FinShield AI is a comprehensive, real-time fraud detection and financial transac
 
 - NextAuth.js integration with Google OAuth and credentials
 - Session management and user authorization
-- Role-based access control
-
-### **Compliance Management**
-
-- AML (Anti-Money Laundering) compliance tracking
-- KYC (Know Your Customer) integration
-- Automated compliance scoring
-- Regulatory reporting capabilities
 
 ### **Modern UI/UX**
 
